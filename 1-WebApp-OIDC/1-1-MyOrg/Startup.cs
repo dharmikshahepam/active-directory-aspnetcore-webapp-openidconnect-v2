@@ -40,8 +40,6 @@ namespace WebApp_OpenIDConnect_DotNet
             .AddMicrosoftIdentityWebApp(options =>
             {
                 Configuration.Bind("AzureAd", options);
-                // Restrict users to specific belonging to specific tenants
-                options.TokenValidationParameters.IssuerValidator = ValidateSpecificIssuers;
             });
 
             services.AddControllersWithViews(options =>
