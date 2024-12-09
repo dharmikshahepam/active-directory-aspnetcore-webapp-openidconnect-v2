@@ -9,6 +9,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Identity.Web;
 using Microsoft.Identity.Web.UI;
+using Microsoft.IdentityModel.Tokens;
+using System.Linq;
 
 namespace WebApp_OpenIDConnect_DotNet
 {
@@ -35,7 +37,12 @@ namespace WebApp_OpenIDConnect_DotNet
 
             // Sign-in users with the Microsoft identity platform
             services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
-            .AddMicrosoftIdentityWebApp(options => Configuration.Bind("AzureAd", options));
+            .AddMicrosoftIdentityWebApp(options =>
+            {
+                Configuration.Bind("AzureAd", options);
+                // Restrict users to specific belonging to specific tenants
+                options.TokenValidationParameters.IssuerValidator = ValidateSpecificIssuers;
+            });
 
             services.AddControllersWithViews(options =>
             {
@@ -46,6 +53,35 @@ namespace WebApp_OpenIDConnect_DotNet
             }).AddMicrosoftIdentityUI();
 
             services.AddRazorPages();
+        }
+
+        private string ValidateSpecificIssuers(string issuer, SecurityToken securityToken,
+                                         TokenValidationParameters validationParameters)
+        {
+            var validIssuers = GetAcceptedTenantIds()
+                                 .Select(tid => $"https://login.microsoftonline.com/{tid}");
+            if (validIssuers.Contains(issuer))
+            {
+                return issuer;
+            }
+            else
+            {
+                throw new SecurityTokenInvalidIssuerException("The sign-in user's account does not belong to one of the tenants that this Web App accepts users from.");
+            }
+        }
+
+        private string[] GetAcceptedTenantIds()
+        {
+            // If you are an ISV who wants to make the Web app available only to certain customers who
+            // are paying for the service, you might want to fetch this list of accepted tenant ids from
+            // a database.
+            // Here for simplicity we just return a hard-coded list of TenantIds.
+            return new[]
+            {
+            "<GUID1>",
+            "<GUID2>",
+            "b41b72d0-4e9f-4c26-8a69-f949f367c91d/v2.0"
+        };
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
